@@ -64,34 +64,34 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     address weth;
     uint256 public platformFeePercent;
 
-	uint8 public decimals = 18;
+    uint8 public decimals = 18;
     uint256 public ethReserve = 1.1 ether;
     uint256 public tokenReserve = SafeMath.mul(1073000191, 10**decimals);
     uint256 public maxBondedAmount = SafeMath.mul(787240200, 10**decimals);
     uint256 public maxInputEthAmount = 5 ether;
-	uint256 public baseTotalSupply = 1000000000 * 10**18;
+    uint256 public baseTotalSupply = 1000000000 * 10**18;
 
     constructor(address _bigtokenHelper, address _uniswapRouter, address _uniswapFactory) {
-    	bigtokenHelper = _bigtokenHelper;
-     	uniswapRouter = _uniswapRouter;
-    	uniswapFactory = _uniswapFactory;
-		platformFeePercent = IBigtokenHelper(bigtokenHelper).platformFeePercent();
+        bigtokenHelper = _bigtokenHelper;
+        uniswapRouter = _uniswapRouter;
+        uniswapFactory = _uniswapFactory;
+        platformFeePercent = IBigtokenHelper(bigtokenHelper).platformFeePercent();
         weth = IUniswapV2Router01(uniswapRouter).WETH();
     }
 
     function initialize(string memory _name, string memory _symbol, uint256 _totalSupply, uint256 _percentReservedForMining) external onlyHelper returns (address) {
-    	require(!isInitialized, "already inited");
+        require(!isInitialized, "already inited");
       	isInitialized = true;
     
       	address feeDao = getFeeDao();
-		tmToken = new BigTokenTpl(_name, _symbol, _totalSupply, address(this), feeDao);
+        tmToken = new BigTokenTpl(_name, _symbol, _totalSupply, address(this), feeDao);
 
-		if (_percentReservedForMining > 0) {
-			//transfer reserve part(used for mining reward) to dao
-			tmToken.transfer(feeDao, _totalSupply - baseTotalSupply);
-		}
+        if (_percentReservedForMining > 0) {
+            //transfer reserve part(used for mining reward) to dao
+            tmToken.transfer(feeDao, _totalSupply - baseTotalSupply);
+        }
 
-		return address(tmToken);
+        return address(tmToken);
     }
 
     // eth(decimal 18) per token
@@ -152,11 +152,11 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         (uint256 outputAmount, uint256 outEthTax1) = calcTokenOutputAmount(msg.value);
         uint256 ethToRefund = 0;
         if (outputAmount > maxBondedAmount.sub(bondedAmount)) {
-        	//last buy skip slippage check
-          	outputAmount = maxBondedAmount.sub(bondedAmount);
-          	(uint256 usedEth, uint256 outEthTax2) = calcEthQuoteToBuy(outputAmount);
-          	require(usedEth < msg.value, "usedEth too large");
-          	ethToRefund = msg.value - usedEth;
+            //last buy skip slippage check
+            outputAmount = maxBondedAmount.sub(bondedAmount);
+            (uint256 usedEth, uint256 outEthTax2) = calcEthQuoteToBuy(outputAmount);
+            require(usedEth < msg.value, "usedEth too large");
+            ethToRefund = msg.value - usedEth;
 
             totalEthTax += outEthTax2;
             ethBalance += usedEth - outEthTax2;
@@ -164,11 +164,11 @@ contract BigtokenBondingCurve is ReentrancyGuard {
             tokenReserve -= outputAmount;
             outEthTaxG = outEthTax2;
         } else {
-          	// Positive slippage is bad.  Negative slippage is good.
-          	// Positive slippage means we will receive less token than estimated
-          	if(estOutputAmount > 0 && estOutputAmount > outputAmount) {
-            	require(estOutputAmount.sub(outputAmount) <= estOutputAmount.div(10000).mul(allowSlip), "Slippage too large");
-          	}
+            // Positive slippage is bad.  Negative slippage is good.
+            // Positive slippage means we will receive less token than estimated
+            if(estOutputAmount > 0 && estOutputAmount > outputAmount) {
+                require(estOutputAmount.sub(outputAmount) <= estOutputAmount.div(10000).mul(allowSlip), "Slippage too large");
+            }
             totalEthTax += outEthTax1;
             ethBalance += msg.value - outEthTax1;
             ethReserve += msg.value - outEthTax1;
@@ -178,7 +178,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
 
         int256 slippage = 0;
         if (estOutputAmount > 0) {
-        	slippage = int256(estOutputAmount) - int256(outputAmount);
+            slippage = int256(estOutputAmount) - int256(outputAmount);
         }
 
         bondedAmount = bondedAmount.add(outputAmount);
@@ -190,12 +190,12 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         }
         if (ethToRefund > 0) {
             require(ethToRefund <= msg.value, "ethToRefund too large");
-        	payable(receiver).transfer(ethToRefund);
+            payable(receiver).transfer(ethToRefund);
         }
 
         if (maxBondedAmount - bondedAmount < 100000) {
-        	isBonded = true;
-        	IBigtokenHelper(bigtokenHelper).emitBondedEvent(address(tmToken), address(this).balance);
+            isBonded = true;
+            IBigtokenHelper(bigtokenHelper).emitBondedEvent(address(tmToken), address(this).balance);
         }
         IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, outputAmount, (msg.value-ethToRefund), priceBondCurve, bondedAmount, "buy", slippage);
     }
@@ -224,7 +224,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         // Positive slippage is bad.  Negative slippage is good.
         // Positive slippage means we will receive less than estimated
         if(estAmountETH > 0 && estAmountETH > outEth) {
-        	require(estAmountETH.sub(outEth) < estAmountETH.div(10000).mul(allowSlip), "Slippage > allowed");
+            require(estAmountETH.sub(outEth) < estAmountETH.div(10000).mul(allowSlip), "Slippage > allowed");
         }
 
         int256 slippage = int256(estAmountETH) - int256(outEth);
@@ -244,8 +244,8 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, _amount, outEth, priceBondCurve, bondedAmount, "sell", slippage);
     }
 
-	function startDexTrade() external onlyHelper {
-		address tokenAddr = address(tmToken);
+    function startDexTrade() external onlyHelper {
+        address tokenAddr = address(tmToken);
         address _pair = IUniswapV2Factory(uniswapFactory).getPair(tokenAddr, weth);
         if (_pair == address(0)) {
             _pair = IUniswapV2Factory(uniswapFactory).createPair(tokenAddr, weth);
@@ -258,14 +258,14 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         uint256 platformFee = payPlatformFee(weth, ethBalanceOwned);
         ethBalanceOwned = address(this).balance; //need to update, as deducted platformFee 
 
-  		tmToken.setStarted();
+        tmToken.setStarted();
 
         // add liquidity
         IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
         uint256 toAddLpTmTokenAmount = baseTotalSupply - maxBondedAmount;
         uint256 tmTokenBalance = tmToken.balanceOf(address(this));
         if (toAddLpTmTokenAmount < tmTokenBalance) {
-        	toAddLpTmTokenAmount = tmTokenBalance;
+            toAddLpTmTokenAmount = tmTokenBalance;
         }
         tmToken.approve(uniswapRouter, type(uint256).max);
         // add liquidity
@@ -280,9 +280,9 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         );
         _handleLP(_pair);
         IBigtokenHelper(bigtokenHelper).emitLaunchEvent(tokenAddr, address(this), _pair, tokenAmount, ethAmount, liquidity, platformFee);
-	}
+    }
 
-  	function payPlatformFee(address _weth, uint256 ethAmount) internal returns (uint256 platformFee) {
+    function payPlatformFee(address _weth, uint256 ethAmount) internal returns (uint256 platformFee) {
         platformFee = ethAmount * platformFeePercent / 1000;
         if (platformFee == 0) {
             return 0;

@@ -13,10 +13,10 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
 
     uint256 public _tokenDeployedCount;
     mapping(uint256 => address) public _tokensDeployed;
-	mapping(address => BigtokenBondingCurve) public tokenAddrToBondingCurve;
+    mapping(address => BigtokenBondingCurve) public tokenAddrToBondingCurve;
     mapping(bytes32 => address) public deployedSymbols;
-	mapping(address => bool) public curves;
-	mapping(address => bool) public tokenAddrToSeedFlag;
+    mapping(address => bool) public curves;
+    mapping(address => bool) public tokenAddrToSeedFlag;
 
     address public feeDao;
     address public uniswapRouter;
@@ -24,7 +24,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
     uint256 public platformFeePercent = 20;	// 20/1000 = 2%
 
     uint256 public percentMaxReservedForMining = 100;	// 10/1000 = 10%
-	  uint256 public baseTotalSupply = 1000000000 * 10**18;
+    uint256 public baseTotalSupply = 1000000000 * 10**18;
 
     mapping (address => bool) public isKeeper;
 
@@ -43,7 +43,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         deployedSymbols[keccak256(abi.encodePacked("bigtoken"))] = address(0x1);
         deployedSymbols[keccak256(abi.encodePacked("BIG"))] = address(0x1);
         deployedSymbols[keccak256(abi.encodePacked("big"))] = address(0x1);
-  	}
+    }
 
     function deployToken(string memory _name, string memory _symbol, uint256 _percentReservedForMining) external payable nonReentrant returns (address) {
         bytes32 symbolEncoded = keccak256(abi.encodePacked(_symbol));
@@ -51,14 +51,14 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         require(_percentReservedForMining <= percentMaxReservedForMining, "token reserved for mining too large!");
 
         uint256 id = _tokenDeployedCount++;
-		
-		uint256 _totalSupply = calcTotalSupply(_percentReservedForMining);
 
-		BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
+        uint256 _totalSupply = calcTotalSupply(_percentReservedForMining);
+
+        BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
         address tokenAddress = curve.initialize(_name, _symbol, _totalSupply, _percentReservedForMining);
-		tokenAddrToBondingCurve[tokenAddress] = curve;
+        tokenAddrToBondingCurve[tokenAddress] = curve;
         _tokensDeployed[id] = tokenAddress;
-		deployedSymbols[symbolEncoded] = tokenAddress;
+        deployedSymbols[symbolEncoded] = tokenAddress;
         curves[address(curve)] = true;
 
         if (msg.value > 0) {
@@ -70,27 +70,27 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         return tokenAddress;
     }
 
-	function calcTotalSupply(uint256 _percentReservedForMining) public view returns (uint256) {
-		if (_percentReservedForMining > 0) {
-			return baseTotalSupply + baseTotalSupply * _percentReservedForMining / 1000;
-		}
-		return baseTotalSupply;
-	}
+    function calcTotalSupply(uint256 _percentReservedForMining) public view returns (uint256) {
+        if (_percentReservedForMining > 0) {
+            return baseTotalSupply + baseTotalSupply * _percentReservedForMining / 1000;
+        }
+        return baseTotalSupply;
+    }
 
-	function createDexPool(address tokenAddr) external onlyKeeper {
-		require(tokenAddrToSeedFlag[tokenAddr] == false, "already seed");
-		tokenAddrToBondingCurve[tokenAddr].startDexTrade();
-		tokenAddrToSeedFlag[tokenAddr] = true;
-	}
+    function createDexPool(address tokenAddr) external onlyKeeper {
+        require(tokenAddrToSeedFlag[tokenAddr] == false, "already seed");
+        tokenAddrToBondingCurve[tokenAddr].startDexTrade();
+        tokenAddrToSeedFlag[tokenAddr] = true;
+    }
 
     function setUnbond(address tokenAddr) external onlyKeeper {
         tokenAddrToBondingCurve[tokenAddr].setUnbond();
     }
 
-	function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, 
+    function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, 
                           uint256 bondedAmount, string memory buyOrSell, int256 slippage) external onlyCurve {
         emit Transaction(tokenAddr, trader, amountToken, amountETH, price, bondedAmount, buyOrSell, slippage);
-	}
+    }
 
     function emitBondedEvent(address tokenAddr, uint256 amountETH) external onlyCurve {
         emit BondedEvent(tokenAddr, amountETH, block.timestamp);
@@ -110,7 +110,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         _;
     }
 
-	function setKeeper(address _account, bool _isActive) external onlyGov {
+    function setKeeper(address _account, bool _isActive) external onlyGov {
         isKeeper[_account] = _isActive;
         emit SetKeeper(_account, _isActive);
     }
@@ -142,8 +142,8 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         return _tokenDeployedCount;
     }
 
-	receive() external payable {
-	}
+    receive() external payable {
+    }
 
     // to help users who accidentally send their tokens to this contract
     function withdrawETH(address payable _receiver) external onlyGov nonReentrant {
