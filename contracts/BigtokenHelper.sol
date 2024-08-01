@@ -58,8 +58,6 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         require(deployedSymbols[symbolEncoded] == address(0x0), "symbol already deployed");
         require(_percentReservedForMining <= percentMaxReservedForMining, "token reserved for mining too large!");
 
-        BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
-
         bytes memory bytecode = type(BigTokenTpl).creationCode;
         bytes32 salt = getSalt(msg.sender, _symbol);
         require(usedSalts[salt] == false, "salt already used!");
@@ -70,6 +68,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         usedSalts[salt] = true;
 
         uint256 _totalSupply = calcTotalSupply(_percentReservedForMining);
+        BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
         BigTokenTpl(tokenAddr).initialize(_name, _symbol, _totalSupply, address(curve), feeDao);
 
         uint256 ethReserve = getEthReserve(_lpLevel);
