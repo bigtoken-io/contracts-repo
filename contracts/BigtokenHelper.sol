@@ -17,6 +17,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
     mapping(bytes32 => address) public deployedSymbols;
     mapping(address => bool) public curves;
     mapping(address => bool) public tokenAddrToSeedFlag;
+    mapping(bytes32 => bool) public usedSalts;
 
     address public feeDao;
     address public uniswapRouter;
@@ -25,6 +26,13 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
 
     uint256 public percentMaxReservedForMining = 100;	// 10/1000 = 10%
     uint256 public baseTotalSupply = 1000000000 * 10**18;
+
+    uint256 public level1EthReserve = 0.375 ether;
+    uint256 public level2EthReserve = 0.745 ether;
+    uint256 public level3EthReserve = 1.1 ether;
+
+    bytes32[] public magicSalts;
+    uint256 public nextSaltIdx = 0;
 
     mapping (address => bool) public isKeeper;
 
@@ -45,29 +53,41 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         deployedSymbols[keccak256(abi.encodePacked("big"))] = address(0x1);
     }
 
-    function deployToken(string memory _name, string memory _symbol, uint256 _percentReservedForMining) external payable nonReentrant returns (address) {
+    function deployToken(string memory _name, string memory _symbol, uint256 _percentReservedForMining, uint256 _lpLevel) external payable nonReentrant returns (address) {
         bytes32 symbolEncoded = keccak256(abi.encodePacked(_symbol));
         require(deployedSymbols[symbolEncoded] == address(0x0), "symbol already deployed");
         require(_percentReservedForMining <= percentMaxReservedForMining, "token reserved for mining too large!");
 
-        uint256 id = _tokenDeployedCount++;
+        BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
+
+        bytes memory bytecode = type(BigTokenTpl).creationCode;
+        bytes32 salt = getSalt(msg.sender, _symbol);
+        require(usedSalts[salt] == false, "salt already used!");
+        address tokenAddr;
+        assembly {
+            tokenAddr := create2(0, add(bytecode, 32), mload(bytecode), salt)
+        }
+        usedSalts[salt] = true;
 
         uint256 _totalSupply = calcTotalSupply(_percentReservedForMining);
+        BigTokenTpl(tokenAddr).initialize(_name, _symbol, _totalSupply, address(curve), feeDao);
 
-        BigtokenBondingCurve curve = new BigtokenBondingCurve(address(this), uniswapRouter, uniswapFactory);
-        address tokenAddress = curve.initialize(_name, _symbol, _totalSupply, _percentReservedForMining);
-        tokenAddrToBondingCurve[tokenAddress] = curve;
-        _tokensDeployed[id] = tokenAddress;
-        deployedSymbols[symbolEncoded] = tokenAddress;
+        uint256 ethReserve = getEthReserve(_lpLevel);
+        curve.initialize(tokenAddr, ethReserve, _totalSupply, _percentReservedForMining);
+        tokenAddrToBondingCurve[tokenAddr] = curve;
+        
+        uint256 id = _tokenDeployedCount++;
+        _tokensDeployed[id] = tokenAddr;
+        deployedSymbols[symbolEncoded] = tokenAddr;
         curves[address(curve)] = true;
 
         if (msg.value > 0) {
             curve.buyTokenForAccount{value: msg.value}(msg.sender);
         }
 
-        //console.log("tokenAddress: ", tokenAddress);
-        emit TokenDeployed(id, tokenAddress, address(curve), msg.sender, block.timestamp);
-        return tokenAddress;
+        //console.log("tokenAddr: ", tokenAddr);
+        emit TokenDeployed(id, tokenAddr, address(curve), msg.sender, block.timestamp);
+        return tokenAddr;
     }
 
     function calcTotalSupply(uint256 _percentReservedForMining) public view returns (uint256) {
@@ -75,6 +95,35 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
             return baseTotalSupply + baseTotalSupply * _percentReservedForMining / 1000;
         }
         return baseTotalSupply;
+    }
+
+    function getSalt(address _sender, string memory _symbol) internal returns (bytes32 salt) {
+        if (magicSalts.length > 0 && nextSaltIdx <= magicSalts.length - 1) {
+            salt = magicSalts[nextSaltIdx];
+            nextSaltIdx += 1;
+        } else {
+            salt = keccak256(abi.encodePacked(_sender, _symbol));
+        }
+    }
+
+    function getEthReserve(uint256 _lpLevel) public view returns (uint256) {
+        if (_lpLevel == 1) {
+            return level1EthReserve;
+        } else if (_lpLevel == 2) {
+            return level2EthReserve;
+        } else {
+            return level3EthReserve;
+        }
+    }
+
+    function calcTokenAddr(bytes32 salt) public view returns (address) {
+        address predictedAddress = address(uint160(uint(keccak256(abi.encodePacked(
+            bytes1(0xff),
+            address(this),
+            salt,
+            keccak256(abi.encodePacked(type(BigTokenTpl).creationCode))
+        )))));
+        return predictedAddress;
     }
 
     function createDexPool(address tokenAddr) external onlyKeeper {
@@ -85,6 +134,12 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
 
     function setUnbond(address tokenAddr) external onlyKeeper {
         tokenAddrToBondingCurve[tokenAddr].setUnbond();
+    }
+
+    function addSalts(bytes32[] memory newSalts) external onlyKeeper {
+        for (uint256 i = 0; i < newSalts.length; i++) {
+            magicSalts.push(newSalts[i]);
+        }
     }
 
     function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, 
@@ -132,6 +187,16 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
 
     function setPlatformFeePercent(uint256 _platformFeePercent) external onlyGov {
         platformFeePercent = _platformFeePercent;
+    }
+
+    function setEthReserve(uint256 _lpLevel, uint256 ethReserve) external onlyGov {
+        if (_lpLevel == 1) {
+           level1EthReserve = ethReserve;
+        } else if (_lpLevel == 2) {
+            level2EthReserve = ethReserve;
+        } else {
+            level3EthReserve = ethReserve;
+        }
     }
 
     function setPercentMaxReservedForMining(uint256 _percentMaxReservedForMining) external onlyGov {

@@ -39,18 +39,10 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 
     uint256 private _totalSupply;
 
-    string private _name;
-    string private _symbol;
+    string internal _name;
+    string internal _symbol;
 
-    /**
-     * @dev Sets the values for {name} and {symbol}.
-     *
-     * All two of these values are immutable: they can only be set once during
-     * construction.
-     */
-    constructor(string memory name_, string memory symbol_) {
-        _name = name_;
-        _symbol = symbol_;
+    constructor() {
     }
 
     /**

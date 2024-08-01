@@ -51,6 +51,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     using SafeMath for uint256;
     
     BigTokenTpl public tmToken;
+    address public pairAddr;
     uint256 public ethBalance = 0;
     uint256 public bondedAmount = 0;
     uint256 public totalEthTax = 0;
@@ -79,19 +80,26 @@ contract BigtokenBondingCurve is ReentrancyGuard {
         weth = IUniswapV2Router01(uniswapRouter).WETH();
     }
 
-    function initialize(string memory _name, string memory _symbol, uint256 _totalSupply, uint256 _percentReservedForMining) external onlyHelper returns (address) {
+    function initialize(address _tmTokenAddr, uint256 _ethReserve, uint256 _totalSupply, uint256 _percentReservedForMining) external onlyHelper {
         require(!isInitialized, "already inited");
       	isInitialized = true;
     
-      	address feeDao = getFeeDao();
-        tmToken = new BigTokenTpl(_name, _symbol, _totalSupply, address(this), feeDao);
-
+        tmToken = BigTokenTpl(_tmTokenAddr);
+        ethReserve = _ethReserve;
         if (_percentReservedForMining > 0) {
             //transfer reserve part(used for mining reward) to dao
+            address feeDao = getFeeDao(); 
             tmToken.transfer(feeDao, _totalSupply - baseTotalSupply);
         }
 
-        return address(tmToken);
+        address tokenAddr = address(tmToken);
+        pairAddr = IUniswapV2Factory(uniswapFactory).getPair(tokenAddr, weth);
+        if (pairAddr == address(0)) {
+            pairAddr = IUniswapV2Factory(uniswapFactory).createPair(tokenAddr, weth);
+        }
+        pairAddr = IUniswapV2Factory(uniswapFactory).getPair(tokenAddr, weth);
+        // assert pair exists
+        assert(pairAddr != address(0));
     }
 
     // eth(decimal 18) per token
@@ -245,15 +253,6 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     }
 
     function startDexTrade() external onlyHelper {
-        address tokenAddr = address(tmToken);
-        address _pair = IUniswapV2Factory(uniswapFactory).getPair(tokenAddr, weth);
-        if (_pair == address(0)) {
-            _pair = IUniswapV2Factory(uniswapFactory).createPair(tokenAddr, weth);
-        }
-        _pair = IUniswapV2Factory(uniswapFactory).getPair(tokenAddr, weth);
-        // assert pair exists
-        assert(_pair != address(0));
-
         uint256 ethBalanceOwned = address(this).balance;
         uint256 platformFee = payPlatformFee(weth, ethBalanceOwned);
         ethBalanceOwned = address(this).balance; //need to update, as deducted platformFee 
@@ -268,7 +267,9 @@ contract BigtokenBondingCurve is ReentrancyGuard {
             toAddLpTmTokenAmount = tmTokenBalance;
         }
         tmToken.approve(uniswapRouter, type(uint256).max);
+
         // add liquidity
+        address tokenAddr = address(tmToken);
         (uint256 tokenAmount, uint256 ethAmount, uint256 liquidity) = router
             .addLiquidityETH{value: ethBalanceOwned}(
             tokenAddr, // token
@@ -278,8 +279,8 @@ contract BigtokenBondingCurve is ReentrancyGuard {
             address(this), // lp to
             block.timestamp + 1 days // deadline
         );
-        _handleLP(_pair);
-        IBigtokenHelper(bigtokenHelper).emitLaunchEvent(tokenAddr, address(this), _pair, tokenAmount, ethAmount, liquidity, platformFee);
+        _handleLP(pairAddr);
+        IBigtokenHelper(bigtokenHelper).emitLaunchEvent(tokenAddr, address(this), pairAddr, tokenAmount, ethAmount, liquidity, platformFee);
     }
 
     function payPlatformFee(address _weth, uint256 ethAmount) internal returns (uint256 platformFee) {

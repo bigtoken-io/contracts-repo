@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+//this token was created in https://bigtoken.io/ platform
+
 import "./ERC20.sol";
 import "./ReentrancyGuard.sol";
 
@@ -10,17 +12,25 @@ interface IBigtokenBondingCurve {
 
 contract BigTokenTpl is ERC20, ReentrancyGuard {
     bool public started = false;
+    address public factory;
     address public curve;
     address public feeDao;
 
     mapping(address => bool) public helperContracts;
 
-    constructor(string memory _name, string memory _symbol, uint256 _totalSupply, address _curve, address _feeDao) ERC20(_name, _symbol) {
+    constructor() {
+        factory = msg.sender;
+    }
+
+    function initialize(string memory name_, string memory symbol_, uint256 _totalSupply, address _curve, address _feeDao) external {
+        require(msg.sender == factory, 'BigTokenTpl: FORBIDDEN'); // sufficient check
+        _name = name_;
+        _symbol = symbol_;
         curve = _curve;
         feeDao = _feeDao;
         helperContracts[curve] = true;
         helperContracts[feeDao] = true;
-        _mint(msg.sender, _totalSupply);
+        _mint(curve, _totalSupply);
     }
 
     function _update(
