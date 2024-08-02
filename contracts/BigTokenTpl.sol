@@ -15,6 +15,7 @@ contract BigTokenTpl is ERC20, ReentrancyGuard {
     address public factory;
     address public curve;
     address public feeDao;
+    bool public isInitialized;
 
     mapping(address => bool) public helperContracts;
 
@@ -24,6 +25,9 @@ contract BigTokenTpl is ERC20, ReentrancyGuard {
 
     function initialize(string memory name_, string memory symbol_, uint256 _totalSupply, address _curve, address _feeDao) external {
         require(msg.sender == factory, 'BigTokenTpl: FORBIDDEN'); // sufficient check
+        require(!isInitialized, "already inited");
+
+      	isInitialized = true;
         _name = name_;
         _symbol = symbol_;
         curve = _curve;
