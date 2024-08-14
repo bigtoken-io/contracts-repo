@@ -6,10 +6,6 @@ pragma solidity ^0.8.0;
 import "./ERC20.sol";
 import "./ReentrancyGuard.sol";
 
-interface IBigtokenBondingCurve {
-    function sellTokenForAccount(uint256 _amount, address receiver) external;
-}
-
 contract BigTokenTpl is ERC20, ReentrancyGuard {
     bool public started = false;
     address public factory;
@@ -44,9 +40,7 @@ contract BigTokenTpl is ERC20, ReentrancyGuard {
     ) internal override(ERC20) {
         // if not started, only allow transfer between limit parties(EOA, feeDao, curve) to disable dex pair creation.
         if (!started) {
-            if (to == address(this) && from != address(0)) {
-                // sell to curve by transfer token to token contract
-            } else if (from != address(0) && helperContracts[to] == true) {
+            if (from != address(0) && helperContracts[to] == true) {
                 //sell to curve or limit transfer
             } else {
                 // else, check and revert.
@@ -62,19 +56,6 @@ contract BigTokenTpl is ERC20, ReentrancyGuard {
             }
         }
         super._update(from, to, value);
-        if (to == address(this) && from != address(0)) {
-            _refund(from, value);
-        }
-    }
-
-    function _refund(address from, uint256 value) internal nonReentrant {
-        require(!started, "already started");
-        require(!_isContract(from), "can not refund to contract");
-        require(from == tx.origin, "can not refund to contract2");
-        require(value > 0, "value not match");
-
-        _approve(address(this), curve, value);
-        IBigtokenBondingCurve(curve).sellTokenForAccount(value, msg.sender);
     }
 
     function setStarted() external {
