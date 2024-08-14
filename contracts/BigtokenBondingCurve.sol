@@ -69,7 +69,6 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     uint256 public ethReserve = 1.1 ether;
     uint256 public tokenReserve = SafeMath.mul(1073000191, 10**decimals);
     uint256 public maxBondedAmount = SafeMath.mul(787240200, 10**decimals);
-    uint256 public maxInputEthAmount = 5 ether;
     uint256 public baseTotalSupply = 1000000000 * 10**18;
 
     constructor(address _bigtokenHelper, address _uniswapRouter, address _uniswapFactory) {
@@ -141,7 +140,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     }
 
     /// @param estOutputAmount estimate output amount of Token
-    /// @param allowSlip amount of slippage allowed in 0100 means 1%
+    /// @param allowSlip amount of slippage allowed in 100 means 1%
     function buyToken(uint256 estOutputAmount, uint256 allowSlip) external payable nonReentrant {
         _doBuyToken(estOutputAmount, allowSlip, msg.sender);
     }
@@ -211,7 +210,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     /// @param _amount token amount to sell
     /// @param estAmountETH estimation of ETH amount
     /// @param allowSlip is a percentage represented as an percentage * 10^2 with a 2 decimal fixed point
-    /// 1% would be uint256 representation of 0100, 1.25% would be 0125, 25.5% would be 2550
+    /// 1% would be uint256 representation of 100, 1.25% would be 125, 25.5% would be 2550
     function sellToken(uint256 _amount, uint256 estAmountETH, uint256 allowSlip) external nonReentrant {
         _sellToken(_amount, estAmountETH, allowSlip, msg.sender);
     }

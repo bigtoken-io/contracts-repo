@@ -14,7 +14,6 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
     uint256 public _tokenDeployedCount;
     mapping(uint256 => address) public _tokensDeployed;
     mapping(address => BigtokenBondingCurve) public tokenAddrToBondingCurve;
-    mapping(bytes32 => address) public deployedSymbols;
     mapping(address => bool) public curves;
     mapping(address => bool) public tokenAddrToSeedFlag;
     mapping(bytes32 => bool) public usedSalts;
@@ -46,16 +45,9 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         feeDao = _feeDao;
         uniswapRouter = _uniswapRouter;
         uniswapFactory = _uniswapFactory;
-
-        deployedSymbols[keccak256(abi.encodePacked("BIGTOKEN"))] = address(0x1);
-        deployedSymbols[keccak256(abi.encodePacked("bigtoken"))] = address(0x1);
-        deployedSymbols[keccak256(abi.encodePacked("BIG"))] = address(0x1);
-        deployedSymbols[keccak256(abi.encodePacked("big"))] = address(0x1);
     }
 
     function deployToken(string memory _name, string memory _symbol, uint256 _percentReservedForMining, uint256 _lpLevel) external payable nonReentrant returns (address) {
-        bytes32 symbolEncoded = keccak256(abi.encodePacked(_symbol));
-        require(deployedSymbols[symbolEncoded] == address(0x0), "symbol already deployed");
         require(_percentReservedForMining <= percentMaxReservedForMining, "token reserved for mining too large!");
 
         bytes memory bytecode = type(BigTokenTpl).creationCode;
@@ -77,7 +69,6 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
         
         uint256 id = _tokenDeployedCount++;
         _tokensDeployed[id] = tokenAddr;
-        deployedSymbols[symbolEncoded] = tokenAddr;
         curves[address(curve)] = true;
 
         if (msg.value > 0) {
