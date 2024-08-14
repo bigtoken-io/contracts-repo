@@ -259,13 +259,8 @@ contract BigtokenBondingCurve is ReentrancyGuard {
 
         tmToken.setStarted();
 
-        // add liquidity
         IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
-        uint256 toAddLpTmTokenAmount = baseTotalSupply - maxBondedAmount;
-        uint256 tmTokenBalance = tmToken.balanceOf(address(this));
-        if (toAddLpTmTokenAmount < tmTokenBalance) {
-            toAddLpTmTokenAmount = tmTokenBalance;
-        }
+        uint256 toAddLpTmTokenAmount = tmToken.balanceOf(address(this));
         tmToken.approve(uniswapRouter, type(uint256).max);
 
         // add liquidity
@@ -301,9 +296,9 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     }
 
     function _handleLP(address lp) internal {
-        // default: drop lp
         IERC20 lpToken = IERC20(lp);
-        lpToken.safeTransfer(address(0), lpToken.balanceOf(address(this)));
+        address deadAddress = address(0x000000000000000000000000000000000000dEaD);
+        lpToken.safeTransfer(deadAddress, lpToken.balanceOf(address(this)));
     }
 
     function getFeeDao() public view returns (address) {
@@ -316,12 +311,12 @@ contract BigtokenBondingCurve is ReentrancyGuard {
     }
 
     modifier onlyHelper() {
-        require(bigtokenHelper == msg.sender, "forbidden1");
+        require(msg.sender == bigtokenHelper, "forbidden1");
         _;
     }
 
     modifier onlyToken() {
-        require(address(tmToken) == msg.sender, "forbidden2");
+        require(msg.sender == address(tmToken), "forbidden2");
         _;
     }
 }
