@@ -38,7 +38,7 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
 
     event TokenDeployed(uint256 id, address indexed token, address curve, address deployedBy, uint256 deployTime);
     event SetKeeper(address indexed account, bool isActive);
-    event Transaction(address indexed tokenAddr, address indexed trader, uint256 amountToken, uint256 amountETH, uint256 price, uint256 supply, string buyOrSell, int256 slippage);
+    event Transaction(address indexed tokenAddr, address indexed trader, uint256 amountToken, uint256 amountETH, uint256 price, uint256 supply, string buyOrSell, int256 slippage, uint256 ethReserve, uint256 tokenReserve);
     event BondedEvent(address indexed tokenAddr, uint256 amountETH, uint256 timestamp);
     event LaunchEvent(address indexed tokenAddr, address curve, address pair_address, uint256 amount, uint256 ethAmount, uint256 liquidity, uint256 platformFee);
 
@@ -142,8 +142,8 @@ contract BigtokenHelper is Governable, ReentrancyGuard {
     }
 
     function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, 
-                          uint256 bondedAmount, string memory buyOrSell, int256 slippage) external onlyCurve {
-        emit Transaction(tokenAddr, trader, amountToken, amountETH, price, bondedAmount, buyOrSell, slippage);
+                          uint256 bondedAmount, string memory buyOrSell, int256 slippage, uint256 ethReserve, uint256 tokenReserve) external onlyCurve {
+        emit Transaction(tokenAddr, trader, amountToken, amountETH, price, bondedAmount, buyOrSell, slippage, ethReserve, tokenReserve);
     }
 
     function emitBondedEvent(address tokenAddr, uint256 amountETH) external onlyCurve {

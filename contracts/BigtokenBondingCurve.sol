@@ -39,7 +39,7 @@ interface IWETH {
 }
 
 interface IBigtokenHelper {
-  function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, uint256 bondedAmount, string memory buyOrSell, int256 slippage) external;
+  function emitTradeEvent(address tokenAddr, address trader, uint256 amountToken, uint256 amountETH, uint256 price, uint256 bondedAmount, string memory buyOrSell, int256 slippage, uint256 ethReserve, uint256 tokenReserve) external;
   function emitBondedEvent(address tokenAddr, uint256 amountETH) external;
   function emitLaunchEvent(address tokenAddr, address curve, address pairAddress, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity, uint256 platformFee) external;
   function feeDao() external view returns (address);
@@ -205,7 +205,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
             isBonded = true;
             IBigtokenHelper(bigtokenHelper).emitBondedEvent(address(tmToken), address(this).balance);
         }
-        IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, outputAmount, (msg.value-ethToRefund), priceBondCurve, bondedAmount, "buy", slippage);
+        IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, outputAmount, (msg.value-ethToRefund), priceBondCurve, bondedAmount, "buy", slippage, ethReserve, tokenReserve);
     }
 
     /// @param _amount token amount to sell
@@ -249,7 +249,7 @@ contract BigtokenBondingCurve is ReentrancyGuard {
             payTradeFee(weth, outEthTax);
         }        
         payable(receiver).transfer(outEth);   // Transfer ETH to Sender
-        IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, _amount, outEth, priceBondCurve, bondedAmount, "sell", slippage);
+        IBigtokenHelper(bigtokenHelper).emitTradeEvent(address(tmToken), receiver, _amount, outEth, priceBondCurve, bondedAmount, "sell", slippage, ethReserve, tokenReserve);
     }
 
     function startDexTrade() external onlyHelper {
